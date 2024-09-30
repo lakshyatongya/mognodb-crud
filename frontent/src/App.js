@@ -6,6 +6,7 @@ const App = () => {
     const [name, setName] = useState('');
     const [age, setAge] = useState('');
     const [gender, setGender] = useState('');
+    const [image, setImage] = useState(null);
     const [editingItem, setEditingItem] = useState(null);
 
     const fetchItems = async () => {
@@ -18,15 +19,47 @@ const App = () => {
     };
 
     const addItem = async () => {
-        await axios.post('http://localhost:5000/items', { name, age, gender });
-        resetForm();
-        fetchItems();
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('age', age);
+        formData.append('gender', gender);
+        if (image) {
+            formData.append('image', image);
+        }
+    
+        try {
+            await axios.post('http://localhost:5000/items', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            resetForm();
+            fetchItems();
+        } catch (error) {
+            console.error("Error adding item:", error);
+        }
     };
 
     const updateItem = async () => {
-        await axios.put(`http://localhost:5000/items/${editingItem._id}`, { name, age, gender });
-        resetForm();
-        fetchItems();
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('age', age);
+        formData.append('gender', gender);
+        if (image) {
+            formData.append('image', image);
+        }
+
+        try {
+            await axios.put(`http://localhost:5000/items/${editingItem._id}`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            resetForm();
+            fetchItems();
+        } catch (error) {
+            console.error("Error updating item:", error);
+        }
     };
 
     const deleteItem = async (id) => {
@@ -38,6 +71,7 @@ const App = () => {
         setName('');
         setAge('');
         setGender('');
+        setImage(null);
         setEditingItem(null);
     };
 
@@ -45,6 +79,7 @@ const App = () => {
         setName(item.name);
         setAge(item.age);
         setGender(item.gender);
+        setImage(null);
         setEditingItem(item);
     };
 
@@ -73,6 +108,10 @@ const App = () => {
                     <option value="Female">Female</option>
                     <option value="Other">Other</option>
                 </select>
+                <input
+                    type="file"
+                    onChange={(e) => setImage(e.target.files[0])}
+                />
                 {editingItem ? (
                     <button onClick={updateItem}>Update Item</button>
                 ) : (
@@ -86,6 +125,7 @@ const App = () => {
                         <th style={{ border: '1px solid black', padding: '8px' }}>Name</th>
                         <th style={{ border: '1px solid black', padding: '8px' }}>Age</th>
                         <th style={{ border: '1px solid black', padding: '8px' }}>Gender</th>
+                        <th style={{ border: '1px solid black', padding: '8px' }}>Image</th>
                         <th style={{ border: '1px solid black', padding: '8px' }}>Actions</th>
                     </tr>
                 </thead>
@@ -95,6 +135,11 @@ const App = () => {
                             <td style={{ border: '1px solid black', padding: '8px' }}>{item.name}</td>
                             <td style={{ border: '1px solid black', padding: '8px' }}>{item.age}</td>
                             <td style={{ border: '1px solid black', padding: '8px' }}>{item.gender}</td>
+                            <td style={{ border: '1px solid black', padding: '8px' }}>
+                                {item.image && (
+                                    <img src={`http://localhost:5000/uploads/${item.image}`} alt={item.name} style={{ width: '50px', height: '50px' }} />
+                                )}
+                            </td>
                             <td style={{ border: '1px solid black', padding: '8px' }}>
                                 <button onClick={() => editItem(item)}>Edit</button>
                                 <button onClick={() => deleteItem(item._id)}>Delete</button>

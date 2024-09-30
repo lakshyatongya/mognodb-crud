@@ -1,52 +1,149 @@
-
-// const bodyParser = require('body-parser');
-const User = require('./model/usermodel.js');
-// Connect to MongoDB
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static('uploads')); // Serve uploaded files
 
 // MongoDB connection
-mongoose.connect('mongodb://localhost:27017/crud-db', { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect('mongodb://localhost:27017/crud', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+});
 
-// Define the schema
 const itemSchema = new mongoose.Schema({
     name: String,
     age: Number,
-    gender: String
+    gender: String,
+    image: String, // Store the filename of the uploaded image
 });
 
 const Item = mongoose.model('Item', itemSchema);
 
+// Set up storage for uploaded files
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads');
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + path.extname(file.originalname)); // Use current timestamp as filename
+    },
+});
+
+const upload = multer({ storage: storage });
+
 // CRUD routes
-app.post('/items', async (req, res) => {
-    const newItem = new Item(req.body);
-    await newItem.save();
-    res.status(201).send(newItem);
+app.post('/items', upload.single('image'), async (req, res) => {
+    try {
+        const newItem = new Item({
+            name: req.body.name,
+            age: req.body.age,
+            gender: req.body.gender,
+            image: req.file ? req.file.filename : null, // Save the filename in the database
+        });
+        await newItem.save();
+        res.status(201).send(newItem);
+    } catch (error) {
+        console.error("Error saving item:", error);
+        res.status(500).send(error.message);
+    }
 });
 
 app.get('/items', async (req, res) => {
-    const items = await Item.find();
-    res.send(items);
+    try {
+        const items = await Item.find();
+        res.send(items);
+    } catch (error) {
+        console.error("Error fetching items:", error);
+        res.status(500).send(error.message);
+    }
 });
 
-app.put('/items/:id', async (req, res) => {
-    const item = await Item.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.send(item);
+app.put('/items/:id', upload.single('image'), async (req, res) => {
+    try {
+        const updatedData = {
+            name: req.body.name,
+            age: req.body.age,
+            gender: req.body.gender,
+            image: req.file ? req.file.filename : undefined, // Update the image if a new one is provided
+        };
+        const item = await Item.findByIdAndUpdate(req.params.id, updatedData, { new: true });
+        res.send(item);
+    } catch (error) {
+        console.error("Error updating item:", error);
+        res.status(500).send(error.message);
+    }
 });
 
 app.delete('/items/:id', async (req, res) => {
-    await Item.findByIdAndDelete(req.params.id);
-    res.status(204).send();
+    try {
+        await Item.findByIdAndDelete(req.params.id);
+        res.status(204).send();
+    } catch (error) {
+        console.error("Error deleting item:", error);
+        res.status(500).send(error.message);
+    }
 });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+
+
+// // const bodyParser = require('body-parser');
+// const User = require('./model/usermodel.js');
+// // Connect to MongoDB
+// const express = require('express');
+// const mongoose = require('mongoose');
+// const cors = require('cors');
+// const app = express();
+// app.use(cors());
+// app.use(express.json());
+
+// // MongoDB connection
+// mongoose.connect('mongodb://localhost:27017/crud', { useNewUrlParser: true, useUnifiedTopology: true });
+
+// // Define the schema
+// const itemSchema = new mongoose.Schema({
+//     name: String,
+//     age: Number,
+//     gender: String
+// });
+
+// const Item = mongoose.model('Item', itemSchema);
+
+// // CRUD routes
+// app.post('/items', async (req, res) => {
+//     const newItem = new Item(req.body);
+//     await newItem.save();
+//     res.status(201).send(newItem);
+// });
+
+// app.get('/items', async (req, res) => {
+//     const items = await Item.find();
+//     res.send(items);
+// });
+
+// app.put('/items/:id', async (req, res) => {
+//     const item = await Item.findByIdAndUpdate(req.params.id, req.body, { new: true });
+//     res.send(item);
+// });
+
+// app.delete('/items/:id', async (req, res) => {
+//     await Item.findByIdAndDelete(req.params.id);
+//     res.status(204).send();
+// });
+
+// const PORT = process.env.PORT || 5000;
+// app.listen(PORT, () => {
+//     console.log(`Server is running on port ${PORT}`);
+// });
 
 
 
